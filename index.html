@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Flow/Diffusion ImageNet Tracker</title>
-    <link rel="stylesheet" href="assets/styles.css?v=20260520-latent" />
+    <title>FlowBench | ImageNet-256 Generation Tracker</title>
+    <link rel="stylesheet" href="assets/styles.css?v=20260617-visual" />
   </head>
   <body>
     <header class="site-header">
@@ -18,7 +18,8 @@
       </div>
       <div>
         <p class="eyebrow">Flow/Diffusion Research Tracker</p>
-        <h1>ImageNet-256 Generation Board</h1>
+        <h1>FlowBench</h1>
+        <p class="brand-subtitle">ImageNet-256 generation results for flow and diffusion-family models.</p>
       </div>
       <nav class="top-links" aria-label="Repository links">
         <a href="prompts/daily-update-agent.md">Daily Agent</a>
@@ -28,6 +29,31 @@
     </header>
 
     <main>
+      <section class="overview-section" aria-labelledby="overview-title">
+        <div class="overview-copy">
+          <p class="eyebrow">Research Leaderboard</p>
+          <h2 id="overview-title">ImageNet-256 Generation Results</h2>
+          <p>Flow-matching, rectified-flow, diffusion-transformer, and latent/pixel generation rows in one benchmark view.</p>
+        </div>
+        <div class="highlight-grid" aria-label="Leaderboard highlights">
+          <article class="highlight-card">
+            <span class="highlight-label">Best conditional FID</span>
+            <strong id="highlightBestCond">--</strong>
+            <p id="highlightBestCondMeta">--</p>
+          </article>
+          <article class="highlight-card">
+            <span class="highlight-label">Best unconditional FID</span>
+            <strong id="highlightBestUncond">--</strong>
+            <p id="highlightBestUncondMeta">--</p>
+          </article>
+          <article class="highlight-card">
+            <span class="highlight-label">Latest result</span>
+            <strong id="highlightLatest">--</strong>
+            <p id="highlightLatestMeta">--</p>
+          </article>
+        </div>
+      </section>
+
       <section class="stats-band" aria-label="Data summary">
         <div class="stat"><span class="stat-value" id="statMethods">--</span><span class="stat-label">Unique Methods</span></div>
         <div class="stat"><span class="stat-value" id="statRows">--</span><span class="stat-label">Total Rows</span></div>
@@ -124,23 +150,18 @@
             <thead>
               <tr>
                 <th data-sort="method">Method</th>
-                <th data-sort="date">Date</th>
-                <th data-sort="backbone">Backbone</th>
-                <th data-sort="latent">Latent</th>
-                <th data-sort="guidance">Condition</th>
                 <th data-sort="fid">FID</th>
-                <th data-sort="is">IS</th>
-                <th data-sort="precision">Precision</th>
-                <th data-sort="recall">Recall</th>
-                <th data-sort="epochs">Epochs</th>
+                <th data-sort="backbone">Backbone</th>
+                <th data-sort="guidance">Condition</th>
                 <th data-sort="training">Training</th>
+                <th>NFE / Steps</th>
+                <th data-sort="date">Date</th>
                 <th>Source</th>
-                <th data-sort="paper">TL;DR</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody">
               <tr>
-                <td colspan="13" class="loading-cell">Loading leaderboard data...</td>
+                <td colspan="8" class="loading-cell">Loading leaderboard data...</td>
               </tr>
             </tbody>
           </table>
@@ -206,6 +227,6 @@
       <a href="data/imagenet-256-leaderboard.csv">Download CSV</a>
     </footer>
 
-    <script src="assets/app.js?v=20260520-latent"></script>
+    <script src="assets/app.js?v=20260617-visual"></script>
   </body>
 </html>

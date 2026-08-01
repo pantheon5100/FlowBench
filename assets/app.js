@@ -37,6 +37,12 @@ const els = {
   statBestUncond: document.querySelector("#statBestUncond"),
   statBestCond: document.querySelector("#statBestCond"),
   statDateRange: document.querySelector("#statDateRange"),
+  highlightBestCond: document.querySelector("#highlightBestCond"),
+  highlightBestCondMeta: document.querySelector("#highlightBestCondMeta"),
+  highlightBestUncond: document.querySelector("#highlightBestUncond"),
+  highlightBestUncondMeta: document.querySelector("#highlightBestUncondMeta"),
+  highlightLatest: document.querySelector("#highlightLatest"),
+  highlightLatestMeta: document.querySelector("#highlightLatestMeta"),
   tableHeaders: document.querySelectorAll("th[data-sort]")
 };
 
@@ -584,18 +590,47 @@ function rowTldr(row) {
   return row.tldr || row.notes || "TL;DR pending extraction.";
 }
 
+function metricChip(label, value) {
+  if (!value || value === "unknown") return "";
+  return `<span>${escapeHtml(label)} ${escapeHtml(value)}</span>`;
+}
+
+function bestFidRow(rows) {
+  return rows
+    .filter((row) => numberValue(row.fid) !== null)
+    .sort((a, b) => numberValue(a.fid) - numberValue(b.fid))[0];
+}
+
+function rowHighlightMeta(row) {
+  if (!row) return "--";
+  const backbone = [row.backbone_family, row.backbone_size].filter(Boolean).join("-");
+  const variant = row.method_variant && row.method_variant !== "unknown" ? `, ${row.method_variant}` : "";
+  return `${row.method}${variant} - ${labelValue(backbone)}`;
+}
+
+function renderHighlight(strongEl, metaEl, row, valueText) {
+  if (!strongEl || !metaEl) return;
+  if (!row) {
+    strongEl.textContent = "--";
+    metaEl.textContent = "--";
+    return;
+  }
+  strongEl.textContent = valueText;
+  metaEl.textContent = rowHighlightMeta(row);
+}
+
 function renderTable() {
   const rows = state.filtered;
   els.rowCount.textContent = `${rows.length} visible rows`;
 
   if (!rows.length) {
-    els.body.innerHTML = '<tr><td colspan="13" class="empty-cell">No rows match the current filters.</td></tr>';
+    els.body.innerHTML = '<tr><td colspan="8" class="empty-cell">No rows match the current filters.</td></tr>';
     return;
   }
 
   els.body.innerHTML = rows
     .map((row) => {
-      const methodVariant = row.method_variant ? `<span>${escapeHtml(row.method_variant)}</span>` : "";
+      const methodVariant = row.method_variant && row.method_variant !== "unknown" ? `<span>${escapeHtml(row.method_variant)}</span>` : "";
       const backbone = [row.backbone_family, row.backbone_size].filter(Boolean).join("-");
       const sourceLabel = row.source_table || "source";
       const rowIndex = state.rows.indexOf(row);
@@ -603,21 +638,39 @@ function renderTable() {
       const methodName = methodUrl
         ? `<a href="${methodUrl}" target="_blank" rel="noopener"><strong>${escapeHtml(row.method)}</strong></a>`
         : `<strong>${escapeHtml(row.method)}</strong>`;
+      const secondaryMetrics = [
+        metricChip("IS", row.inception_score),
+        metricChip("P", row.precision),
+        metricChip("R", row.recall),
+        row.latent_or_pixel ? `<span>${escapeHtml(row.latent_or_pixel.replaceAll("_", " "))}</span>` : ""
+      ]
+        .filter(Boolean)
+        .join("");
+      const nfeDetails = row.nfe_or_steps && row.nfe_or_steps !== "unknown" ? row.nfe_or_steps : "";
+      const epochLine = row.epochs && row.epochs !== "unknown" ? `${escapeHtml(row.epochs)} epochs` : "";
       return `
         <tr data-row-index="${rowIndex}">
-          <td class="method-cell">${methodName}${methodVariant}</td>
-          <td class="date-cell">${escapeHtml(row.submitted_date ? formatDateLabel(row.submitted_date) : "--")}</td>
-          <td>${escapeHtml(labelValue(backbone))}</td>
-          <td>${escapeHtml(labelValue(row.latent_or_pixel).replaceAll("_", " "))}</td>
+          <td class="method-cell">
+            <div class="method-title">${methodName}${methodVariant}</div>
+            <p>${escapeHtml(rowTldr(row))}</p>
+            <div class="method-tags">${secondaryMetrics}</div>
+          </td>
+          <td class="fid-cell">
+            <span>${escapeHtml(row.fid || "--")}</span>
+            <small>${escapeHtml(row.fid_type || "FID")}</small>
+          </td>
+          <td>
+            <span class="strong-cell">${escapeHtml(labelValue(backbone))}</span>
+            <span class="muted-line">${escapeHtml(labelValue(row.encoder_or_tokenizer).replaceAll("_", " "))}</span>
+          </td>
           <td><span class="${badgeClassForGuidance(row)}">${escapeHtml(guidanceLabel(row.guidance))}</span></td>
-          <td class="fid-cell">${escapeHtml(row.fid || "--")}</td>
-          <td>${escapeHtml(row.inception_score || "--")}</td>
-          <td>${escapeHtml(row.precision || "--")}</td>
-          <td>${escapeHtml(row.recall || "--")}</td>
-          <td>${escapeHtml(row.epochs || "--")}</td>
           <td><span class="badge train">${escapeHtml(labelValue(row.training_type).replaceAll("_", " "))}</span></td>
+          <td class="nfe-cell">
+            <span>${escapeHtml(nfeDetails || "--")}</span>
+            ${epochLine ? `<span class="muted-line">${epochLine}</span>` : ""}
+          </td>
+          <td class="date-cell">${escapeHtml(row.submitted_date ? formatDateLabel(row.submitted_date) : "--")}</td>
           <td class="source-cell"><a href="${/^https?:\/\//.test(row.source_url) ? escapeHtml(row.source_url) : "#"}">${escapeHtml(sourceLabel)}</a></td>
-          <td class="tldr-cell" title="${escapeHtml(row.paper_title || "")}">${escapeHtml(row.paper_title || "--")}</td>
         </tr>
       `;
     })
@@ -633,8 +686,21 @@ function renderStats() {
   const condRows = state.rows.filter((r) => isGuided(r) && numberValue(r.fid) !== null);
   const bestUncond = uncondRows.length ? Math.min(...uncondRows.map((r) => numberValue(r.fid))) : null;
   const bestCond = condRows.length ? Math.min(...condRows.map((r) => numberValue(r.fid))) : null;
+  const bestUncondRow = bestFidRow(uncondRows);
+  const bestCondRow = bestFidRow(condRows);
+  const latestRow = [...state.rows]
+    .filter((r) => r.submitted_date)
+    .sort((a, b) => String(b.submitted_date).localeCompare(String(a.submitted_date)) || (numberValue(a.fid) ?? 999) - (numberValue(b.fid) ?? 999))[0];
   els.statBestUncond.textContent = bestUncond !== null ? bestUncond.toFixed(2) : "--";
   els.statBestCond.textContent = bestCond !== null ? bestCond.toFixed(2) : "--";
+  renderHighlight(els.highlightBestCond, els.highlightBestCondMeta, bestCondRow, bestCondRow ? Number(numberValue(bestCondRow.fid)).toFixed(2) : "--");
+  renderHighlight(els.highlightBestUncond, els.highlightBestUncondMeta, bestUncondRow, bestUncondRow ? Number(numberValue(bestUncondRow.fid)).toFixed(2) : "--");
+  renderHighlight(
+    els.highlightLatest,
+    els.highlightLatestMeta,
+    latestRow,
+    latestRow ? formatDateLabel(latestRow.submitted_date) : "--"
+  );
   const dates = state.rows.map((r) => r.submitted_date).filter(Boolean).sort();
   if (dates.length) {
     const latestDate = formatDateLabel(dates[dates.length - 1]);
@@ -748,7 +814,7 @@ async function init() {
     bindEvents();
     render();
   } catch (error) {
-    els.body.innerHTML = `<tr><td colspan="13" class="empty-cell">Could not load ${escapeHtml(DATA_URL)}.</td></tr>`;
+    els.body.innerHTML = `<tr><td colspan="8" class="empty-cell">Could not load ${escapeHtml(DATA_URL)}.</td></tr>`;
     if (els.fidTimeline) {
       els.fidTimeline.innerHTML = `<text x="450" y="195" text-anchor="middle" class="tick-label">Could not load timeline data.</text>`;
     }
